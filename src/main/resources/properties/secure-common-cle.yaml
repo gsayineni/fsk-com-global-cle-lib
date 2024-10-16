@@ -1,0 +1,5 @@
+# Anypoint MQ Configurations
+anypointMQ:
+  cle:
+    clientID: "![onoP2cejqI1NhY1s/xVJBQcvzQmTwD6MJIOhEw6JXCxcnZ/YhVIWqg==]"
+    clientSecret: "![fH5ATgF9O9BgBLBmma/dQNNr+8St+jegE29fRyy1C8pr5I7AeSRbTg==]"

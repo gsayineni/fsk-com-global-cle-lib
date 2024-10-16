@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:cloudhub="http://www.mulesoft.org/schema/mule/cloudhub"
+	xmlns:ibm-mq="http://www.mulesoft.org/schema/mule/ibm-mq"
+	xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd
+http://www.mulesoft.org/schema/mule/ibm-mq http://www.mulesoft.org/schema/mule/ibm-mq/current/mule-ibm-mq.xsd
+http://www.mulesoft.org/schema/mule/cloudhub http://www.mulesoft.org/schema/mule/cloudhub/current/mule-cloudhub.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+	<configuration-properties doc:name="Configuration properties" doc:id="4e9b1342-f6a1-4655-b441-820750ff672f" file="properties\common-cle.yaml" />
+	<cloudhub:config name="CloudHub_Config" doc:name="CloudHub Config" doc:id="8b96979c-ca8e-4066-8ee6-b18e35fd1bf6" >
+		<cloudhub:connection username="${cloudhub.username}" password="${cloudhub.password}" environment="${environment.id}"/>
+	</cloudhub:config>
+	<anypoint-mq:config name="Anypoint_MQ_Config_Audit" doc:name="Anypoint MQ Config" doc:id="9c4d3d51-a557-4a14-9a1f-350560c8ec87" >
+		<anypoint-mq:connection url="${anypointMQ.cle.url}" clientId="${secure::anypointMQ.cle.clientID}" clientSecret="${secure::anypointMQ.cle.clientSecret}">
+			<anypoint-mq:tcp-client-socket-properties connectionTimeout="60000" />
+		</anypoint-mq:connection>
+	</anypoint-mq:config>
+	<anypoint-mq:config name="Anypoint_MQ_Config_Excp" doc:name="Anypoint MQ Config" doc:id="2fac306d-9318-452c-8134-9fd9e6f3b872" >
+		<anypoint-mq:connection url="${anypointMQ.cle.url}" clientId="${secure::anypointMQ.cle.clientID}" clientSecret="${secure::anypointMQ.cle.clientSecret}">
+			<anypoint-mq:tcp-client-socket-properties connectionTimeout="60000" />
+		</anypoint-mq:connection>
+	</anypoint-mq:config>
+</mule>

@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule 
+	xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:cloudhub="http://www.mulesoft.org/schema/mule/cloudhub" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/cloudhub http://www.mulesoft.org/schema/mule/cloudhub/current/mule-cloudhub.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
+	<sub-flow name="build-error-response-SubFlow" doc:id="6c5e8c9c-9ad5-4278-a2f3-7bee4ef6f7f3" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;if(!isEmpty(error.errorMessage.attributes.statusCode)) error.errorMessage.attributes.statusCode&#10;else if (!isEmpty(error.cause.errorMessage.attributes.statusCode)) error.cause.errorMessage.attributes.statusCode &#10;else if(!isEmpty(vars.errorCode)) vars.errorCode &#10;else if (!isEmpty(vars.errorPayload.errorCode)) vars.errorPayload.errorCode&#10;else 500]' doc:name="Set errorCode" doc:id="b50e4375-e675-4ddf-9c60-cd17cb6f6d37" variableName="errorCode" />
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;if(vars.errorType != null and vars.errorType != '') vars.errorType&#10;else if (error.errorType.identifier != null and error.errorType.identifier != '') error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier &#10;else if (vars.errorPayload.category != null and vars.errorPayload.category != '') vars.errorPayload.category&#10;else &quot;SYSTEM ERROR&quot;]" doc:name="Set errorType" doc:id="5c680803-7faf-4c9f-94ba-55b3f82f9653" variableName="errorType" />
+		<set-variable value="#[%dw 2.0&#10;output application/json skipNullOn = 'everywhere'&#10;---&#10;if (!isEmpty(error.detailedDescription)) error.detailedDescription&#10;else if (!isEmpty(error.description)) error.description&#10;else if (!isEmpty(vars.errorMessage)) vars.errorMessage&#10;else &quot;System Error Occurred&quot;]" doc:name="Set errorMessage" doc:id="7de46cff-48bf-4e53-b6bf-60ce22a662ca" variableName="errorMessage" />
+		<set-variable value="#[vars.errorCode default 500]" doc:name="Set httpStatus" doc:id="9530a35d-28aa-4cd1-8d2a-71d42d4cb294" variableName="httpStatus" />
+		<ee:transform doc:name="set externalErrorResponse" doc:id="ee9e15d6-922f-4022-9dec-df8ee674028f" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable resource="dw/errorResponse.dwl" variableName="externalErrorResponse" />
+			</ee:variables>
+		</ee:transform>
+		<logger level="ERROR" doc:name="Log Error" doc:id="c240ccbe-03cb-4031-b5e1-f8bcfe73eb8a" message='#[vars.cleVariables.flowName default "" ++ " Failed To Process the Request"]'/>
+		<ee:transform doc:name="transform excpLog" doc:id="deb0ac4c-1b6d-4fe5-892a-81abd31b2f65">
+			<ee:message>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="exceptionLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId default correlationId,
+	message: vars.cleVariables.flowName default ""  ++ " Failed To Process",
+	tracepoint: "EXCEPTION",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "ERROR",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else '',
+	errorCode: vars.externalErrorResponse.statusCode default 500,
+	errorType: vars.externalErrorResponse.errorType default "SYSTEM:ERROR",
+	errorMessage: vars.externalErrorResponse.errorDetailedDescription default "System Error Occurred"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<anypoint-mq:publish doc:name="Publish errorLog" doc:id="2670ff22-279a-4714-828c-1f1527f6c3ed" config-ref="Anypoint_MQ_Config_Excp" destination="${anypointMQ.cle.excpQueue}" target="amqResponse">
+			<anypoint-mq:body ><![CDATA[#[vars.exceptionLog]]]></anypoint-mq:body>
+		</anypoint-mq:publish>
+		<logger level="INFO" doc:name="error Log Info" doc:id="87ece387-f499-41bd-ae4e-ed3fb66fb72e" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Error Message:: #[payload]'/>
+		<choice doc:name="Choice errorFlow" doc:id="2ab981f6-600a-4a45-90b9-557292d55047" >
+			<when expression='#[vars.errorFlow != "Propagate"]'>
+				<async doc:name="Async" doc:id="e3717b87-233c-497e-b616-0a0eb6ba2e9f" >
+					<logger level="INFO" doc:name="infoLog" doc:id="2294ca68-a0cc-4673-a548-f6d4e7afda1d" message='UUID:: #[vars.uuid default (vars.transactionId default "")], in async flow'/>
+					<choice doc:name="Choice Error Update" doc:id="5e000516-1ade-4e62-b2a0-92b52d220d5a">
+					<when expression='#[((vars.system == "salesforce") and (!(vars.exceptionLog.errorCode startsWith "5")))]'>
+						<logger level="INFO" doc:name="infoLog" doc:id="e9704194-63e9-40ba-9269-bdd0069691a8" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Error response will be updated in salesforce' />
+							<flow-ref doc:name="Error Update Flow" doc:id="7f7c05b4-0f6e-4a80-95b7-6dd911bfb88f" name='#[vars.system ++ "-errorUpdate-flow"]'/>
+					</when>
+					<otherwise>
+						<logger level="INFO" doc:name="infoLog" doc:id="fb9df2f6-3ce4-4711-afb5-5e657cbcbe80" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Error response will not be updated in salesforce' />
+					</otherwise>
+				</choice>
+				</async>
+				<choice doc:name="checkingCloudhubAlert" doc:id="6cb6bdd5-804a-41ab-9d9b-3061efd89fe0">
+			<when expression="#[vars.alert == true]">
+				<ee:transform doc:name="var-exceptionHead, subject" doc:id="bbf0bba8-8c7d-4c46-903b-7093c4d279fe">
+					<ee:message>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="exceptionHead"><![CDATA[%dw 2.0
+output application/json
+var exceptionMessage = "Exception occurred while trying to process below request"
+---
+if(vars.externalErrorResponse.statusCode startsWith "4") "Business Error:: " ++  (vars.operation default "") ++ " " ++ exceptionMessage else if(vars.externalErrorResponse.statusCode startsWith "5") "System Error:: " ++ (vars.operation default "") ++ " " ++ exceptionMessage else exceptionMessage]]></ee:set-variable>
+								<ee:set-variable variableName="subject" ><![CDATA[%dw 2.0
+output application/json
+---
+if((vars.operation != "") and (vars.operation != null)) (vars.exceptionLog.applicationname default "") ++ "-> " ++ (vars.operation default "") ++ " Failed!" else (vars.exceptionLog.applicationname default "") ++ "-> " ++ "Custom Application Notification"]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="send-exception-notification-flow" doc:id="80340d4d-3c32-44d7-9ac5-253090c5768d" name="send-exception-notification-flow" />
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="infoLog" doc:id="348de609-569b-4745-a82d-dbcc16267d5b" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Cloud hub Notification was set to false' />
+			</otherwise>
+		</choice>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="infoLog" doc:id="d95e8152-8698-4a4c-925f-b9452edf902f" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Propagating the error to the parent flow'/>
+				<remove-variable doc:name="removingVariable" doc:id="6d9d1dc6-9459-4076-8c5d-ed4d9ce33a85" variableName='#["errorFlow"]'/>
+			</otherwise>
+		</choice>
+		<choice doc:name="Choice errorResponse" doc:id="0091edd1-0934-4fe9-90d7-7dc9e91c2db1" >
+			<when expression='#[vars.initialRequest.initialHeader.Accept == "application/xml" or attributes.headers.accept == "application/xml"]' >
+				<ee:transform doc:name="XML Response" doc:id="106f1506-80d6-4a6a-b663-bc94834e0d33" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="errorResponse" ><![CDATA[%dw 2.0
+output application/xml skipNullOn="everywhere"
+---
+vars.externalErrorResponse
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="JSON Response" doc:id="646ca791-fc67-45af-a842-fc126a2132ca" >
+					<ee:message />
+					<ee:variables >
+						<ee:set-variable variableName="errorResponse" ><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+---
+vars.externalErrorResponse
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<set-payload value="#[vars.errorResponse]" doc:name="Set Error Response Payload" doc:id="3f45a881-ef18-485b-8758-1c42f41a328b" />
+	</sub-flow>
+	<sub-flow name="handle-error" doc:id="69f8871f-fd25-4b71-b7a0-8914ee044643" >
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;if(!isEmpty(error.errorMessage.attributes.statusCode)) error.errorMessage.attributes.statusCode&#10;else if (!isEmpty(error.cause.errorMessage.attributes.statusCode)) error.cause.errorMessage.attributes.statusCode &#10;else if(!isEmpty(vars.errorCode)) vars.errorCode &#10;else if (!isEmpty(vars.errorPayload.errorCode)) vars.errorPayload.errorCode&#10;else 500]" doc:name="Set errorCode" doc:id="e5edad8b-c422-4491-b2f6-dc01bd7745fb" variableName="errorCode"/>
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;if(vars.errorType != null and vars.errorType != '') vars.errorType&#10;else if (error.errorType.identifier != null and error.errorType.identifier != '') error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier &#10;else if (vars.errorPayload.category != null and vars.errorPayload.category != '') vars.errorPayload.category&#10;else &quot;SYSTEM ERROR&quot;]" doc:name="Set errorType" doc:id="0e7b9101-d6b3-4d6c-a8ad-fcb2212c6376" variableName="errorType"/>
+		<set-variable value="#[%dw 2.0&#10;output application/json skipNullOn = 'everywhere'&#10;---&#10;if (!isEmpty(error.detailedDescription)) error.detailedDescription&#10;else if (!isEmpty(error.description)) error.description&#10;else if (!isEmpty(vars.errorMessage)) vars.errorMessage&#10;else &quot;System Error Occurred&quot;]" doc:name="Set errMessage" doc:id="163ed14b-c868-4bc2-8ce7-f0ce57788b8e" variableName="errorMessage" />
+		<set-variable value="#[vars.errorCode default 500]" doc:name="Set httpStatus" doc:id="b3566c50-9edd-4422-b499-53ca964f4113" variableName="httpStatus" />
+		<ee:transform doc:name="set externalErrorResponse" doc:id="b0915eac-6e28-4a25-9c47-ec45fcabc605">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="externalErrorResponse"><![CDATA[%dw 2.0
+//var errPayload = ((error.errorMessage.payload pluck $$) filter ($ contains "environment"))
+output application/json skipNullOn = 'everywhere'
+---
+{
+	"applicationName": p("json.logger.application.name"),
+	"environment": p('env') default "",
+	"statusCode": if (error.errorMessage.payload != null) (if ((sizeOf(vars.errPayload) == 1) and (error.errorMessage.payload.statusCode != null) ) (error.errorMessage.payload.statusCode) else (vars.errorCode default 500)) else vars.errorCode default 500,
+	"status": "FAILURE",
+	"errorType": if (error.errorMessage.payload != null) (if ( (sizeOf(vars.errPayload) == 1) and (error.errorMessage.payload.errorType != null) ) (error.errorMessage.payload.errorType) else vars.errorType default "") else vars.errorType default "",
+	"errorDescription": if(!isEmpty(error.description)) error.description else vars.errorMessage default "System Error Occurred while executing the API Call",
+	"errorDetailedDescription": if (error.errorMessage.payload != null) (if ((sizeOf(vars.errPayload) == 1) and (error.errorMessage.payload.DetailedDescription != null) ) (error.errorMessage.payload.DetailedDescription) 
+								else (vars.errorMessage default (error.exception.exceptionMessage default error.muleMessage.payload default error.detailedDescription default ""))) else (vars.errorMessage default error.exception.exceptionMessage default error.muleMessage.payload default error.detailedDescription default "System Error Occurred"),						
+	"transactionId": vars.transactionId default correlationId,
+	"timeStamp": now() as DateTime {format:"yyyy-MM-dd'T'HH:mm:ss"}
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="ERROR" doc:name="Log Error" doc:id="a05ba57a-f54f-4e48-8581-0d8c0ae62688" message='#[vars.cleVariables.flowName default "" ++ " Failed To Process the Request"]' />
+		<ee:transform doc:name="transform excpLog" doc:id="630d2b88-440e-4b8d-ba47-b85c093a1e35">
+			<ee:message />
+			<ee:variables>
+				<ee:set-variable variableName="exceptionLog"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId default correlationId,
+	message: vars.cleVariables.flowName default ""  ++ " Failed To Process",
+	tracepoint: "EXCEPTION",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "ERROR",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else '',
+	errorCode: vars.externalErrorResponse.statusCode default 500,
+	errorType: vars.externalErrorResponse.errorType default "SYSTEM:ERROR",
+	errorMessage: vars.externalErrorResponse.errorDetailedDescription default "System Error Occurred"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<anypoint-mq:publish doc:name="Publish errorLog" doc:id="3f0321c5-dbc3-48dc-b857-3b8d9ac22afb" config-ref="Anypoint_MQ_Config_Excp" destination="${anypointMQ.cle.excpQueue}" target="amqResponse">
+			<anypoint-mq:body><![CDATA[#[vars.exceptionLog]]]></anypoint-mq:body>
+		</anypoint-mq:publish>
+		<choice doc:name="Choice errorFlow" doc:id="4cddf1d3-c486-4185-8be3-38737d1b005f">
+			<when expression='#[vars.errorFlow != "Propagate"]'>
+				<async doc:name="Async" doc:id="c6c83892-db70-436e-81ab-7c1557cae230">
+					<logger level="INFO" doc:name="infoLog" doc:id="0642eb54-8672-4706-b4e5-9dfe68f258b8" message='UUID:: #[vars.uuid default (vars.transactionId default "")], in async flow' />
+					<choice doc:name="Choice errorUpdate" doc:id="c26a104b-e80e-4051-b8a8-821175b2b9ec">
+						<when expression='#[((vars.system == "salesforce") and (!(vars.exceptionLog.errorCode startsWith "5")))]'>
+							<logger level="INFO" doc:name="infoLog" doc:id="5eb10996-3198-4fc0-aa25-b10789c7d4bb" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Error response will be updated in salesforce' />
+							<flow-ref doc:name="Error Update Flow" doc:id="44f20fd8-7f53-4251-9be3-41fbf9dae803" name='#[vars.system ++ "-errorUpdate-flow"]' />
+						</when>
+						<otherwise>
+							<logger level="INFO" doc:name="Default Log" doc:id="6769f489-a33f-480e-97b3-7a0039b81618" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Error response will not be updated in salesforce' />
+						</otherwise>
+					</choice>
+				</async>
+				<choice doc:name="checkingCloudhubAlert" doc:id="b65067c0-a06a-4202-a9d6-8ed3c3f53937">
+					<when expression="#[vars.alert == true]">
+						<ee:transform doc:name="var-exceptionHead, subject" doc:id="c6c3e683-815f-4e06-9358-aeafcd158dc4">
+							<ee:message />
+							<ee:variables>
+								<ee:set-variable variableName="exceptionHead"><![CDATA[%dw 2.0
+output application/json
+var exceptionMessage = "Exception occurred while trying to process below request"
+---
+if(vars.externalErrorResponse.statusCode startsWith "4") "Business Error:: " ++  (vars.operation default "") ++ " " ++ exceptionMessage else if(vars.externalErrorResponse.statusCode startsWith "5") "System Error:: " ++ (vars.operation default "") ++ " " ++ exceptionMessage else exceptionMessage]]></ee:set-variable>
+								<ee:set-variable variableName="subject"><![CDATA[%dw 2.0
+output application/json
+---
+if((vars.operation != "") and (vars.operation != null)) (vars.exceptionLog.applicationname default "") ++ "-> " ++ (vars.operation default "") ++ " Failed!" else (vars.exceptionLog.applicationname default "") ++ "-> " ++ "Custom Application Notification"]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+						<flow-ref doc:name="send-exception-notification-flow" doc:id="e9d8cd84-d22e-4d06-8259-ad2f31f6f5e8" name="send-exception-notification-flow" />
+					</when>
+					<otherwise>
+						<logger level="INFO" doc:name="infoLog" doc:id="e091b852-21dd-45cd-8260-c21add91bcfb" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Cloud hub Notification was set to false' />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Default Log" doc:id="fc2f1cb2-4792-4ea0-80b8-f0d696e1d146" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Propagating the error to the parent flow' />
+				<remove-variable doc:name="removingVariable" doc:id="0c1c2144-4216-44ab-8629-94a890f5e30f" variableName='#["errorFlow"]' />
+			</otherwise>
+		</choice>
+		<choice doc:name="Choice errorResponse" doc:id="1badfffa-f13c-4532-996b-b28cf01736a4" >
+			<when expression='#[vars.initialRequest.initialHeader.Accept == "application/xml" or attributes.headers.accept == "application/xml"]'>
+				<ee:transform doc:name="XML Response" doc:id="05230e12-e2fa-41b3-8aef-d148f6c7d464" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="errorResponse" ><![CDATA[%dw 2.0
+output application/xml skipNullOn="everywhere"
+---
+vars.externalErrorResponse
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="JSON Response" doc:id="7b949f96-84bd-4c73-a4a0-bc82430c02f0" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="errorResponse" ><![CDATA[%dw 2.0
+output application/json skipNullOn="everywhere"
+---
+vars.externalErrorResponse
+]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<set-payload value="#[vars.errorResponse]" doc:name="Set Error Response Payload" doc:id="bda146a5-1a8f-41e6-9e5b-3148d4c639e0" />
+	</sub-flow>
+	<sub-flow name="send-exception-notification-flow" doc:id="14ab2165-55b2-4058-bb71-f4ddd4259216" >
+		<logger level="INFO" doc:name="InfoLog" doc:id="264997f9-a8c0-4a04-8af5-d3f422dd5dbd" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Cloud hub Notification will be sent'/>
+		<async doc:name="Async" doc:id="e05bc3a4-a07b-4f9b-83ed-7ab9a610b2d1" >
+			<cloudhub:create-notification domain="${domain}" doc:name="Create Notification" doc:id="89cf3da2-b38f-461d-872a-1ee98675d849" config-ref="CloudHub_Config" priority="ERROR" transactionId="#[vars.transactionId default correlationId]">
+			<reconnect frequency="3000" count="3"/>
+				<cloudhub:message ><![CDATA[#["\n" ++ "<U>" ++ (vars.exceptionHead default "") ++ "</U> \n" ++ write(vars.originalPayload, "application/json") ++ "\n" ++
+"\n\n" ++
+"<U>" ++ "Exception Response" ++ "</U>\n" ++ write(if(!isEmpty(payload)) payload else error.description, "application/json") ++
+"\n <B>Please check the Error Message<B>"]]]></cloudhub:message>
+				<cloudhub:custom-properties ><![CDATA[#[output application/java
+---
+{
+	"subject" : vars.subject 
+}]]]></cloudhub:custom-properties>
+		</cloudhub:create-notification>
+			<logger level="INFO" doc:name="infoLog" doc:id="83c1157b-c83b-4263-928f-0ff91e2b50f5" message='UUID:: #[vars.uuid default (vars.transactionId default "")], Cloud hub Notification sent successfully'/>  
+		</async>
+	
+</sub-flow>
+
+</mule>

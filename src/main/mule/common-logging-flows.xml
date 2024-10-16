@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="startLogFlow" doc:id="261ba39e-d259-4cde-b9a2-f8b42231c582" >
+		<async doc:name="Async" doc:id="7bb6477d-aca7-436a-a511-4cfe5db7aff9">
+			<logger level="INFO" doc:name="Start Log" doc:id="30bff3d8-e453-4ae2-8a2b-04b37bb0c998" message='#[vars.cleVariables.flowName default "" ++ " Flow Started Log"]'/>
+			<ee:transform doc:name="transform startLog" doc:id="7c898f31-42b2-4d25-bd09-e692a06f49c9" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="startLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId,
+	message: vars.cleVariables.flowName default ""  ++ " Flow Started",
+	tracepoint: "START",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "INFO",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else ''		 
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<anypoint-mq:publish doc:name="Publish startLog" doc:id="c3192d2b-712b-488e-994a-cd41ff9d23c9" config-ref="Anypoint_MQ_Config_Audit" destination="${anypointMQ.cle.auditQueue}" target="amqResponse">
+				<anypoint-mq:body ><![CDATA[#[vars.startLog]]]></anypoint-mq:body>
+			</anypoint-mq:publish>
+		</async>
+	</sub-flow>
+	<sub-flow name="endLogFlow" doc:id="231219c0-409f-42a7-a5f3-c69d737d3fcd" >
+		<async doc:name="Async" doc:id="b3cbb8a9-830d-4509-806b-c73f6e807b17">
+			<logger level="INFO" doc:name="End Log" doc:id="41aaf9ad-c8c5-4f5b-b9af-1a1859ef8186" message='#[vars.cleVariables.flowName default "" ++ " Flow Completed Log"]' />
+			<ee:transform doc:name="transform endLog" doc:id="b1d82260-c4f4-4a81-9f3e-bb772d4d8171" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="endLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId,
+	message: vars.cleVariables.flowName default ""  ++ " Flow Completed",
+	tracepoint: "END",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "INFO",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else ''
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<anypoint-mq:publish doc:name="Publish endLog" doc:id="acbfbcf5-caf3-453a-9aab-8c8bc11f25c0" config-ref="Anypoint_MQ_Config_Audit" destination="${anypointMQ.cle.auditQueue}" target="amqResponse">
+				<anypoint-mq:body ><![CDATA[#[vars.endLog]]]></anypoint-mq:body>
+			</anypoint-mq:publish>
+		</async>
+	</sub-flow>
+	<sub-flow name="beforeRequestLogFlow" doc:id="e3d33481-7d9c-4e00-8eff-17673a2caeab" >
+		<async doc:name="Async" doc:id="a5424105-31b4-404b-afd9-5582235b691f">
+			<logger level="INFO" doc:name="beforeRequest Log" doc:id="bddca26f-c201-4afe-80d5-06b7ebb4052a" message='#[vars.cleVariables.flowName default "" ++ " Before Request Call Log"]' />
+			<ee:transform doc:name="transform beforeRequestLog" doc:id="2d5f715c-8066-45f2-971f-a4d551a44cbe" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="beforeRequestLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId,
+	message: vars.cleVariables.flowName default ""  ++ " Before Request",
+	tracepoint: "BEFORE_REQUEST",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "INFO",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else ''
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<anypoint-mq:publish doc:name="Publish beforeRequestLog" doc:id="42911433-1c3f-472d-8675-14cf40b4d570" config-ref="Anypoint_MQ_Config_Audit" destination="${anypointMQ.cle.auditQueue}" target="amqResponse">
+				<anypoint-mq:body ><![CDATA[#[vars.beforeRequestLog]]]></anypoint-mq:body>
+			</anypoint-mq:publish>
+		</async>
+	</sub-flow>
+	<sub-flow name="afterRequestLogFlow" doc:id="508fffbf-da5a-482c-bbca-5a536561b1b1" >
+		<async doc:name="Async" doc:id="a8abadef-ae02-41e7-a5bf-e2c2db7ef429">
+			<logger level="INFO" doc:name="afterRequestLog" doc:id="39b1adde-1e73-461e-a809-bd8b2f66a6c4" message='#[vars.cleVariables.flowName default "" ++ " After Request Call Log"]' />
+			<ee:transform doc:name="transform afterRequestLog" doc:id="719d95ca-f13d-4054-bb35-7f4d4b24c523" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="afterRequestLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId,
+	message: vars.cleVariables.flowName default ""  ++ " After Request",
+	tracepoint: "AFTER_REQUEST",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "INFO",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else ''
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<anypoint-mq:publish doc:name="Publish afterRequestLog" doc:id="ff9718fb-3470-4444-9698-66958c82db0f" config-ref="Anypoint_MQ_Config_Audit" destination="${anypointMQ.cle.auditQueue}" target="amqResponse">
+				<anypoint-mq:body ><![CDATA[#[vars.afterRequestLog]]]></anypoint-mq:body>
+			</anypoint-mq:publish>
+		</async>
+	</sub-flow>
+	<sub-flow name="beforeTransformLogFlow" doc:id="0e425559-9649-46d2-8444-76ba81587589" >
+		<async doc:name="Async" doc:id="96741aec-67c1-478a-9bf8-60e83f3c2437">
+			<logger level="INFO" doc:name="beforeTransformLog" doc:id="aaedacd3-6690-451c-a0c9-87abef204669" message='#[vars.cleVariables.flowName default "" ++ " Before Transform Log"]' />
+			<ee:transform doc:name="transform beforeTransformLog" doc:id="821bc8e8-886e-44a8-9d59-3b2e631aa76f" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="beforeTransformLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId,
+	message: vars.cleVariables.flowName default ""  ++ " Before Transform",
+	tracepoint: "BEFORE_TRANSFORM",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "INFO",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else ''
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<anypoint-mq:publish doc:name="Publish beforeTransform " doc:id="50c7fa2d-f38b-41fa-ac83-d2083aa102bc" config-ref="Anypoint_MQ_Config_Audit" destination="${anypointMQ.cle.auditQueue}" target="amqResponse">
+				<anypoint-mq:body ><![CDATA[#[vars.beforeTransformLog]]]></anypoint-mq:body>
+			</anypoint-mq:publish>
+		</async>
+	</sub-flow>
+	<sub-flow name="afterTransformLogFlow" doc:id="757373c9-d67d-4424-b67d-1a17bb38d703" >
+		<async doc:name="Async" doc:id="fccf2a69-ac17-45fc-bab4-763aa3734259">
+			<logger level="INFO" doc:name="afterTransform Log" doc:id="b2dea789-fb9c-400b-885a-4f6f9adad833" message='#[vars.cleVariables.flowName default "" ++ " After Transform Log"]' />
+			<ee:transform doc:name="transform afterTransform" doc:id="871a5248-7c68-4590-a503-0bccb9e69fe6" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="afterTransformLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId,
+	message: vars.cleVariables.flowName default ""  ++ " After Transform",
+	tracepoint: "AFTER_TRANSFORM",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "INFO",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else ''
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<anypoint-mq:publish doc:name="Publish afterTransform" doc:id="3096c83f-ed5c-421d-a41e-02d442720acc" config-ref="Anypoint_MQ_Config_Audit" destination="${anypointMQ.cle.auditQueue}" target="amqResponse">
+				<anypoint-mq:body ><![CDATA[#[vars.afterTransformLog]]]></anypoint-mq:body>
+			</anypoint-mq:publish>
+		</async>
+	</sub-flow>
+	<sub-flow name="exceptionLogFlow" doc:id="b2975644-ac08-4f28-91f8-1946f90a1648" >
+		<async doc:name="Async" doc:id="39f7fa83-55d2-43c7-b2f7-f1f4118d24d5">
+			<logger level="ERROR" doc:name="exceptionLog" doc:id="8c9c7df9-da51-4085-b1c0-f940ad56dc19" message='#[vars.cleVariables.flowName default null ++ " Failed:: " ++ error.description default "Critical Error Occurred"]'/>
+			<ee:transform doc:name="transform exceptionLog" doc:id="720193b6-02ff-4069-a212-f9cefc501b32" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="exceptionLog" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	applicationname: p("json.logger.application.name"),
+	applicationversion: p("json.logger.application.version"),
+	correlationid: vars.cleVariables.transactionId default correlationId,
+	message: vars.cleVariables.flowName default ""  ++ " Failed To Process",
+	tracepoint: "EXCEPTION",
+	timestamp: now(),
+	payload: if(!isEmpty(payload.^raw)) payload 
+    		 else if(!isEmpty(vars.cleVariables.originalPayload)) vars.cleVariables.originalPayload 
+    		 else '',
+	environment: p('env'),
+	sourceapp: vars.cleVariables.sourceApp,
+	targetapp: vars.cleVariables.targetApp,
+	endpoint: vars.cleVariables.endPoint,
+	transdomain: vars.cleVariables.transDomain,
+	status: "ERROR",
+	additionalKeys: vars.cleVariables.additionalKeys,
+	orderid: if(!isEmpty(vars.orderid)) vars.orderid
+			 else if(!isEmpty(vars.cleVariables.orderid)) vars.cleVariables.orderid
+			 else '',
+	vin: if(!isEmpty(vars.vin)) vars.vin
+			 else if(!isEmpty(vars.cleVariables.vin)) vars.cleVariables.vin
+			 else '',
+	customerid: if(!isEmpty(vars.customerid)) vars.customerid
+			 else if(!isEmpty(vars.cleVariables.customerid)) vars.cleVariables.customerid
+			 else '',
+	configurationid: if(!isEmpty(vars.configurationid)) vars.configurationid
+			 else if(!isEmpty(vars.cleVariables.configurationid)) vars.cleVariables.configurationid
+			 else '',
+	aux1: if(!isEmpty(vars.aux1)) vars.aux1
+			 else if(!isEmpty(vars.cleVariables.aux1)) vars.cleVariables.aux1
+			 else '',
+	aux2: if(!isEmpty(vars.aux2)) vars.aux2
+			 else if(!isEmpty(vars.cleVariables.aux2)) vars.cleVariables.aux2
+			 else '',
+	aux3: if(!isEmpty(vars.aux3)) vars.aux3
+			 else if(!isEmpty(vars.cleVariables.aux3)) vars.cleVariables.aux3
+			 else '',
+	errorCode: vars.errorCode,
+	errorType: vars.errorType,
+	errorMessage: vars.errorMessage
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<anypoint-mq:publish doc:name="Publish debugLog" doc:id="260dee12-bc81-446e-b440-1fd02638c1d8" config-ref="Anypoint_MQ_Config_Excp" destination="${anypointMQ.cle.excpQueue}" target="amqResponse">
+				<anypoint-mq:body ><![CDATA[#[vars.exceptionLog]]]></anypoint-mq:body>
+			</anypoint-mq:publish>
+		</async>
+	</sub-flow>
+</mule>
