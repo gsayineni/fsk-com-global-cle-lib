@@ -1,0 +1,27 @@
+# JSON Logger Configurations
+json:
+  logger:
+    application:
+      name: "test-global-ErrorHandler"
+      version: "1.0.0"
+      disabled-fields: ""
+
+additional:
+  logger:
+    level: "INFO"
+    name: "dummy"
+
+source:
+  application:
+    name: "Salesforce"
+
+target:
+  application:
+    name: "SAP"
+
+# Anypoint MQ Configurations
+anypointMQ:
+  cle:
+    url: "https://mq-us-west-2.anypoint.mulesoft.com/api/v1/organizations/d445696c-e617-41eb-bf61-36ae3cbededb/environments/166946e0-be5d-4ebb-b43f-3994453cdc18"
+    auditQueue: "fsk-commonle-auditlog"
+    excpQueue: "fsk-commonle-excplog"  

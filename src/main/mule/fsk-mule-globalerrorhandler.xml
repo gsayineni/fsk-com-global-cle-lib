@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:cloudhub="http://www.mulesoft.org/schema/mule/cloudhub" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/cloudhub http://www.mulesoft.org/schema/mule/cloudhub/current/mule-cloudhub.xsd">
+	<error-handler name="global-error-handler" doc:id="be840230-6f99-49d5-b2f3-b8339027600a" >
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="f715c423-17db-4421-93c7-5c45ab1ffa3a" type="CONNECTIVITY">
+			<set-variable value='#[{errorCode: "504"}]' doc:name="set errorCode" doc:id="11b1421d-ab16-4206-b646-47ceb990d2f9" variableName="errorPayload"/>
+			<set-variable value="#[if (error.errorType.identifier != null and error.errorType.identifier != '') error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier &#10;else &quot;CONNECTIVITY&quot;]" doc:name="set errorType" doc:id="9c8c54c3-8f5c-4a21-80bc-114e260ac058" variableName="errorType"/>
+			<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;if(vars.errorMessage !='' and vars.errorMessage !=null) vars.errorMessage else (error.detailedDescription)]" doc:name="set errorMessage" doc:id="f929a660-ebb9-4ca1-9a92-ee46f6d580e5" variableName="errorMessage" />
+			<set-variable value='ERROR' doc:name="Set Severity" doc:id="c2996531-6493-441d-9951-09d15dab0335" variableName="severity"/>
+			<flow-ref doc:name="Call handle-error" doc:id="ad1a3cc4-efbf-4067-aa71-0db3d45f326d" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ee892fcc-e504-4af4-a709-deb043909ec6" type="SECURITY">
+			<set-variable value="#[if (error.errorType.identifier != null and error.errorType.identifier != '') error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier &#10;else &quot;SECURITY&quot;]" doc:name="set errorType" doc:id="7c61a8a0-50b7-4e2c-b628-66a44be1405b" variableName="errorType"/>
+			<set-variable value="#[%dw 2.0&#10;output application/java&#10;---&#10;if(vars.errorMessage !='' and vars.errorMessage !=null) vars.errorMessage else (error.detailedDescription)]" doc:name="set errorMessage" doc:id="0aab9819-f877-4a1d-a36b-21c19ecf3395" variableName="errorMessage" />
+			<set-variable value='ERROR' doc:name="set Severity" doc:id="380238f2-677f-4a64-a412-bdfd442baa75" variableName="severity"/>
+			<choice doc:name="Choice" doc:id="9a12cf7e-e75b-41eb-923e-8df91af4385e" >
+				<when expression="#[error.errorMessage.attributes.statusCode == 401 or error.errorType.identifier == 'UNAUTHORIZED']">
+					<set-variable value='#[{errorCode: "401"}]' doc:name="Unauthorized" doc:id="cfc4a3d2-341e-4bb0-b7d5-41b304fe4423" variableName="errorPayload"/>
+				</when>
+				<when expression="#[error.errorMessage.attributes.statusCode == 403 or error.errorType.identifier == 'FORBIDDEN']">
+					<set-variable value='#[{errorCode: "403"}]' doc:name="Forbidden" doc:id="98ca774d-1e1c-42a7-b7bd-7883d370fb6a" variableName="errorPayload"/>
+				</when>
+				<otherwise >
+					<set-variable value="#[errorCode: error.errorMessage.attributes.statusCode]" doc:name="errorCode" doc:id="0ad9ce49-545a-47aa-b3ee-317a891b22f3" variableName="errorPayload"/>
+				</otherwise>
+			</choice>
+			<flow-ref doc:name="Call handle-error" doc:id="8573811b-c443-4da1-a189-8144efa56f92" name="handle-error"/>
+		</on-error-continue>
+		
+		<on-error-continue enableNotifications="true" logException="true" doc:name="Json Validation Error Handler" doc:id="a549d151-ef67-4ce3-9a10-de3f6165664b" type="ANY" when='#[error.cause.class contains "org.mule.module.json.validation.*"]'>
+			<set-variable value="412" doc:name="errorCode" doc:id="b554da43-892b-4573-a19f-62384afa2013" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="6b0d61f3-57fa-441f-bab9-74285c0a7246" name="handle-error"/>
+		</on-error-continue>		
+		<on-error-continue enableNotifications="true" logException="true" doc:name="Http RESTCall Exception" doc:id="50c3fe2c-23be-430b-8f6c-c19d76202f74" type="ANY" when='#[error.cause.class contains "org.mule.extension.http.api.request.validator.ResponseValidatorTypedException"]'>
+			<set-variable value="412" doc:name="errorCode" doc:id="56017889-49f4-460d-aaea-e6c408391406" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="99cc3eec-5067-432f-9308-4d20fb34524f" name="handle-error"/>
+		</on-error-continue>
+		<!-- no data to transform, typically nothing in response -->
+		<!--All Other Exception -->
+
+<on-error-continue enableNotifications="true" logException="true" doc:name="Response Validator Error Handler" doc:id="55051907-8d12-405c-9ca8-b01364ccb0af" type="ANY" when='#[error.cause.class contains "org.mule.module.http.internal.request.ResponseValidatorException"]'>
+ 			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="16cde179-0bcb-4b07-81e1-7f04b7034b07" variableName="errorFlow" />
+			<set-variable value='#[error.errorMessage.payload.message default error.description]' doc:name="errorMessage" doc:id="c8857305-5b27-446f-b98f-f95afe6c8473" variableName="errorMessage"/>
+			<set-variable value="400" doc:name="errorCode" doc:id="f5f35dd2-95fc-4946-9f24-2145ece0cc2a" variableName="errorCode" />
+ 			<flow-ref doc:name="handle-error" doc:id="968f45e6-b0c7-4318-94a8-db8c22d5f70e" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="Response Validator Typed Exception" doc:id="d39a5e85-3b64-44f9-8efa-77647fc7fa5c" type="ANY" when='#[["org.mule.extension.http.api.request.validator.ResponseValidatorTypedException", "org.mule.extension.http.api.request.validator.ResponseValidatorException"] contains (error.cause.class)]'>
+ 			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="e4e1697a-b951-4f50-a9ce-7d3ba32a21c3" variableName="errorFlow" />
+			<set-variable value='#[error.errorMessage.payload.messages[0] default error.description]' doc:name="errorMessage" doc:id="f40aed16-5f82-419b-a634-476a1d8c8d9e" variableName="errorMessage"/>
+			<set-variable value="400" doc:name="errorCode" doc:id="63317658-2092-4ac3-8133-8efdec3955e9" variableName="errorCode" />
+ 			<set-variable value="#[if (error.errorType.identifier != null and error.errorType.identifier != '') error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier &#10;else &quot;HTTP:BAD_REQUEST&quot;]" doc:name="errorType" doc:id="16ce17ff-54cc-4dfa-923e-395c2bc6339a" variableName="errorType"/>
+			<flow-ref doc:name="handle-error" doc:id="c694bf77-f269-44d5-bc28-42265f9e0be1" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="Validation Error Handler" doc:id="2807337d-1f58-4e8d-a11f-f07630a8126f" type="ANY" when='#[error.cause.class contains "org.mule.extension.validation.api.ValidationException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="ee764290-ad3f-4090-b9ab-1cc2cdd28c9c" variableName="errorFlow" />
+			<set-variable value="400" doc:name="errorCode" doc:id="59c976f7-2189-45d1-addd-3e6d78e56f88" variableName="errorCode" />
+ 			<flow-ref doc:name="handle-error" doc:id="7c864ed8-50f9-415f-9275-8f55324c0a0e" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="Dataweave Catch Exception Strategy" doc:id="ad7ed994-5d50-4321-9f0a-d545ae28ca3e" type="ANY" when='#[error.cause.class contains "com.mulesoft.weave.*"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="3d16c5ef-0db7-471e-82bd-20716b280865" variableName="errorFlow" />
+			<set-variable value="400" doc:name="errorCode" doc:id="f4e16a3e-4721-4130-a1b1-d16702b6b7fe" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="18e195ae-00db-4786-97eb-16c46ff2aa93" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="Connection Error Handler" doc:id="cac69170-6ad8-4577-b0c3-90a620d79487" type="ANY" when='#[error.cause.class contains "java.net.ConnectException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="2d18cdd3-1391-46f3-8800-7a5cda3eddca" variableName="errorFlow" />
+			<set-variable value="500" doc:name="errorCode" doc:id="9864ca9a-b36f-4a5b-b571-052c47dc11a7" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="6a6fdf43-c84d-4ae1-8c9c-ef519cfc2c45" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="RetryPolicyExhausted Error Handler" doc:id="f7e92f4d-26ef-454b-9dd8-4911ca029082" type="ANY" when='#[error.cause.class contains "org.mule.runtime.core.api.retry.policy.RetryPolicyExhaustedException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="bdd4beeb-4247-4191-bf0d-ec0327c68380" variableName="errorFlow" />
+			<set-variable value="500" doc:name="errorCode" doc:id="8ad550cf-8b0d-48e6-82b0-d56cca003e3e" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="182cb844-fd10-4ddd-84c6-ae47b07ddd61" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="SQLException Error Handler" doc:id="c0172c70-070e-4c1e-8f80-8e2c828b4351" type="ANY" when='#[error.cause.class contains "java.sql.SQLException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="e2635c4c-4b63-4acd-9b89-cc6f8fbcddcd" variableName="errorFlow" />
+			<set-variable value="500" doc:name="errorCode" doc:id="cc0ae0a4-ba38-4654-ae93-cc21d48d0e3e" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="c7c1a658-282d-4655-921b-89803fddc13d" name="handle-error"/>
+		</on-error-continue>
+    	<on-error-continue enableNotifications="true" logException="true" doc:name="SQLServerException Error Handler" doc:id="31c867e8-ff36-4969-afe6-00b70963634a" type="ANY" when='#[error.cause.class contains "com.microsoft.sqlserver.jdbc.SQLServerException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="83709ef0-b2bb-4390-9ea0-21fa1b8bd5e3" variableName="errorFlow" />
+			<set-variable value="500" doc:name="errorCode" doc:id="be6185bb-ec8e-4bb2-90c3-9f6fd7e5ca8a" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="6b3c7fa1-6dac-4cc0-a973-2fea67032767" name="handle-error"/>
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="CompositeRoutingException Error Handler" doc:id="1410a12d-d62a-4dcd-aa49-88ea109e111e" type="ANY" when='#[error.cause.class contains "org.mule.routing.CompositeRoutingException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="4c8d441d-422e-4f41-bbf5-5eab46427174" variableName="errorFlow" />
+			<set-variable value="400" doc:name="errorCode" doc:id="c816c300-a7a5-4fc1-8cb2-56c65dd192cb" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="0f7d6400-d147-42f3-a5dc-21c6969acbf2" name="handle-error"/>
+		</on-error-continue>
+    	<on-error-continue enableNotifications="true" logException="true" doc:name="InvalidQueryParameterException Error Handler" doc:id="47b60ee8-2a8e-49ed-9815-0c309611539a" type="ANY" when='#[error.cause.class contains "org.mule.module.apikit.exception.InvalidQueryParameterException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="bd1fdafc-e324-4632-94f5-1dd56ad12cca" variableName="errorFlow" />
+			<set-variable value="400" doc:name="errorCode" doc:id="20863bf7-1207-4237-87fb-e10a64b07176" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="c5ab34dd-7fcd-438e-92a4-fd85bee4d514" name="handle-error"/>
+		</on-error-continue>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="Dataweave Catch Exception Strategy" doc:id="ada76f6f-c80a-4740-9d0c-317c0b030e03" type="ANY" when='#[error.cause.class contains "com.mulesoft.weave.*"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="e5b4a583-1cc1-4684-84cf-5fe583d84bad" variableName="errorFlow"/>
+			<set-variable value="400" doc:name="errorCode" doc:id="5545880c-c3a7-4812-9e11-cfa1efcb91c6" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="b54de482-7bd1-493f-ada4-2a7624a4e2b9" name="handle-error"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="RetryPolicyExhausted Error Handler" doc:id="fb7ed2b9-c314-4e0d-87f1-cd76569df992" type="ANY" when='#[error.cause.class contains "org.mule.runtime.core.api.retry.policy.RetryPolicyExhaustedException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="20f786f1-66d3-4993-bf06-cbfb2eb8f71b" variableName="errorFlow"/>
+			<set-variable value="500" doc:name="errorCode" doc:id="1736ae78-f855-4962-bf47-1875adf3f48f" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="c855dd41-f856-4dca-8574-60b2556b53e1" name="handle-error"/>
+		</on-error-propagate>
+
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="SOAPException Error Handler" doc:id="4cad30bb-7bde-457d-9435-bc3c17fb09cc" type="ANY" when='#[error.cause.class contains "javax.xml.soap.SOAPException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="58a28798-e461-4b38-af60-5981524bfb63" variableName="errorFlow"/>
+			<set-variable value="500" doc:name="errorCode" doc:id="5ba85206-8a5a-4900-b404-c7d8c4938362" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="a96ffb64-1487-4e5d-b762-9b3f0803bb49" name="handle-error"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="SoapFaultException Error Handler" doc:id="75b459dc-81c1-4a1c-8681-b1cf8853535f" type="ANY" when='#[error.cause.class contains "org.mule.module.ws.consumer.SoapFaultException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="abb99f37-1008-4aa2-a42a-1b0489be5c30" variableName="errorFlow"/>
+			<set-variable value="500" doc:name="errorCode" doc:id="60eb9d64-7c00-4b1e-bee1-08490ec4433f" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="27a9acdd-872a-4816-a44d-1228d4343878" name="handle-error"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="CompositeRoutingException Error Handler" doc:id="386cac63-1fe4-42ef-bda1-3f0f774e81d4" type="ANY" when='#[error.cause.class contains "org.mule.routing.CompositeRoutingException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="25ff2f51-961b-4efd-a9f2-64825416edd2" variableName="errorFlow"/>
+			<set-variable value="400" doc:name="errorCode" doc:id="e32d0802-a0be-4fa5-a154-76707d39ef5b" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="bf321941-f7f4-4ac6-bc6d-b6f7c8886900" name="handle-error"/>
+		</on-error-propagate>
+    	<on-error-propagate enableNotifications="true" logException="true" doc:name="InvalidQueryParameterException Error Handler" doc:id="fd1f006d-64f9-4365-9678-f3a717bedd96" type="ANY" when='#[error.cause.class contains "org.mule.module.apikit.exception.InvalidQueryParameterException"]'>
+			<set-variable value='#["Propagate"]' doc:name="errorFlow" doc:id="d17ee665-16ef-4081-8318-f65fb235a92b" variableName="errorFlow"/>
+			<set-variable value="400" doc:name="errorCode" doc:id="77b3988b-5691-4cb6-b8a8-96ed742fa1d2" variableName="errorCode" />
+			<flow-ref doc:name="handle-error" doc:id="4bfdea02-af52-4424-9b02-bb5124c43365" name="handle-error"/>
+		</on-error-propagate>
+
+<on-error-continue enableNotifications="true" logException="true" doc:name="SalesforceException Error Handler" doc:id="4ca1b4ae-0f3b-4f00-8876-afa18ac0ff3b" type="ANY" when='#[error.cause.class contains "org.mule.extension.salesforce.internal.error.exception.service.SalesforceException"]'>
+			<set-variable value="#[400]" doc:name="errorCode" doc:id="42e8e113-2721-4e27-ab50-7a7ead11f067" variableName="errorCode" />
+			<ee:transform doc:name="errorMessage" doc:id="7d3ca38f-8d54-4a71-ba89-1d1f3df8e8da">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="errorMessage"><![CDATA[%dw 2.0
+output application/json
+var data = substringBefore((substringAfter(error.description,"message")),"}]")
+import * from dw::core::Strings
+---
+if ( data != "" ) (if ( data contains "Invalid id" ) (substringBefore(substringAfter(data, "Invalid id: "), "\\n" )) ++ " is invalid Id"
+    else if ( data contains "INVALID_CROSS_REFERENCE_KEY" ) substringBefore(substringAfter(data,"with id "),"; first error:" ) ++ " is invalid Id" 
+    else if ( data contains "convertDateTimeMethod" ) substringBefore(substringAfter(data,"Exception: "),"\\n" ) ++ " Invalid TimeZone" 
+	else if ( data contains "FIELD_CUSTOM_VALIDATION_EXCEPTION" ) substringBefore(substringAfter(data,"EXCEPTION, "),": []\\n" )
+	else if ( data contains "INVALID_FIELD" ) trim(substringAfter(substringBefore(read(substringAfter(error.description,"response body:")).message[0],"\n"),"INVALID_FIELD,"))
+	else if ( data contains "MALFORMED_ID") trim(substringAfter(substringBefore(read(substringAfter(error.description,"response body:")).message[0],"\n"),"MALFORMED_ID,"))
+	else  ((substringAfter(substringBefore((read(substringAfter(error.description,"response body:")).message[0]),"\n"),"")))) else if ( error.description contains  "invalid ID field:" ) (trim((substringAfterLast(error.description,":")) ++ " is Invalid")) else if ( error.description contains  "invalid parameter value" ) (trim((substringAfterLast(error.description,":")))) else ""]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="handle-error" doc:id="3f96fc25-5f3f-45b8-a64a-37577d2697f0" name="handle-error" />
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="SALESFORCE:INVALID_INPUT" doc:id="16b9e404-04e2-4cea-9dda-aa4497afb5b4" type="ANY" when='#[error.cause.class contains "org.mule.extension.salesforce.internal.error.exception.service.InvalidRequestDataException"]'>
+			<set-variable value="#[400]" doc:name="errorCode" doc:id="9d47d44e-5917-4bb3-bc57-a47c5f9dd531" variableName="errorCode" />
+			<ee:transform doc:name="errorMessage" doc:id="9d4e6545-858e-411b-8db4-f64f39caeacc">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="errorMessage"><![CDATA[%dw 2.0
+output application/json
+var data = (substringAfter(error.description,"No such column"))
+import * from dw::core::Strings
+---
+ "No such column " ++ data]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="handle-error" doc:id="bb055d67-b3eb-4f95-a3de-28a32e8e97ac" name="handle-error" />
+		</on-error-continue>
+		<on-error-continue enableNotifications="true" logException="true" doc:name="SAP_Bad-Request" doc:id="66feec49-8239-48a0-b9f9-e351d88bf51f" type="ANY" when='#[error.cause.class contains "org.mule.extension.http.api.request.validator.ResponseValidatorTypedException"]'>
+			<set-variable value="#[400]" doc:name="errorCode" doc:id="f32c928f-de99-4711-9cf7-187001dcbc31" variableName="errorCode" />
+			<ee:transform doc:name="errorMessage" doc:id="24edfd15-5995-430a-8058-048c4d77d74a" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="errorMessage" ><![CDATA[%dw 2.0
+output application/json
+---
+error.errorMessage.payload."error"."message"."value" default error.description]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="handle-error" doc:id="49666647-8bc9-4e47-bcb3-64337500d967" name="handle-error" />
+		</on-error-continue>
+<on-error-continue enableNotifications="true" logException="true" doc:name="On_Error_Continue_ANY" doc:id="fb994c7d-bad4-4940-9d23-a6b80100d65f" type="ANY">
+			<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;(error.errorType.namespace default "INTERNAL" ++ ":" ++ error.errorType.identifier default "ERROR") default "SYSTEM"]' doc:name="set errorType" doc:id="885d3e41-b5a9-468a-8474-68af03df20df" variableName="errorType"/>
+			<set-variable value='ERROR' doc:name="set Severity" doc:id="24ec21e6-09cb-4a98-b131-8bb81aada3df" variableName="severity"/>
+			<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;if((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:BAD_REQUEST') &quot;Validation Error&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:NOT_FOUND') &quot;Resource not Found&quot;&#10;else if((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:METHOD_NOT_ALLOWED') &quot;Method not Allowed&quot;&#10;else if((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:NOT_ACCEPTABLE') &quot;Not Acceptable&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:UNSUPPORTED_MEDIA_TYPE') &quot;Unspported Media Type&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:BAD_REQUEST') &quot;Validation Error&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:NOT_FOUND') &quot;Resource Not Found&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:METHOD_NOT_ALLOWED') &quot;Method not Allowed&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:NOT_ACCEPTABLE') &quot;Not Acceptable&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:UNSUPPORTED_MEDIA_TYPE') &quot;Unspported Media Type&quot;&#10;else if ((error.errorType.namespace) == 'VALIDATION') &quot;Validation Error&quot;&#10;else &quot;Internal Server Error&quot;]" doc:name="set errorMessage" doc:id="20365788-39d8-46ff-aa0a-08868474abfc" variableName="errorMessage"/>
+			<ee:transform doc:name="transform Error" doc:id="c39c5103-3c57-48f9-836b-6ffa06518725" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="errorPayload" ><![CDATA[%dw 2.0
+output application/java
+---
+
+	if (error.errorMessage.attributes.statusCode == 400 or error.errorType.identifier == 'BAD_REQUEST') 
+	errorCode : "422"
+	else if (error.errorMessage.attributes.statusCode == 404 or error.errorType.identifier == 'NOT_FOUND')
+	errorCode: "404"
+	else if (error.errorMessage.attributes.statusCode == 405 or error.errorType.identifier == 'METHOD_NOT_ALLOWED')
+	errorCode: "405"
+	else if (error.errorMessage.attributes.statusCode == 406 or error.errorType.identifier == 'NOT_ACCEPTABLE')
+	{errorCode: 406, category: "FUNCTIONAL"}
+	else if (error.errorMessage.attributes.statusCode == 415 or error.errorType.identifier == 'UNSUPPORTED_MEDIA_TYPE')
+	errorCode: "415"
+	else if (error.errorMessage.attributes.statusCode == 501 or error.errorType.identifier == 'NOT_IMPLEMENTED')
+	{errorCode: 501, category: "SYSTEM"}
+	else if (error.errorMessage.attributes.statusCode == 429 or error.errorType.identifier == 'TOO_MANY_REQUESTS')
+	{errorCode: 429, category: "OTHERS"}
+	else if (error.errorMessage.attributes.statusCode == 423 or error.errorType.identifier == 'LOCKED')
+	{errorCode: 423, category: "OTHERS"}
+	else if (error.errorMessage.attributes.statusCode == 206 or error.errorType.identifier == 'PARTIAL_CONTENT')
+	{errorCode: 206, category: "OTHERS", severity: "Info"}
+	else if (error.errorType.identifier == 'EXPRESSION')
+	{errorCode: 500, category: "INTERNAL", severity: "Info"}
+	
+	else if(error.errorMessage.attributes.statusCode != null)
+	errorCode: error.errorMessage.attributes.statusCode
+	else {errorCode: 500, category: "INTERNAL"}
+	
+]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call handle-error" doc:id="39df6b9c-d6df-4443-99aa-ccf139778d33" name="handle-error"/>
+		</on-error-continue>						
+<on-error-propagate enableNotifications="true" logException="true" doc:name="On_Error_Propogate_ANY" doc:id="ade113ef-99c3-43f8-be76-521c9f4efd45" type="ANY">
+			<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;(error.errorType.namespace default "INTERNAL" ++ ":" ++ error.errorType.identifier default "ERROR") default "SYSTEM"]' doc:name="set errorType" doc:id="285198a4-c7fa-4ddf-845e-19ebaeb5b467" variableName="errorType"/>
+			<set-variable value='ERROR' doc:name="set Severity" doc:id="7b647e4a-0663-4a39-9b16-3d6f0408d905" variableName="severity"/>
+			<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;if((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:BAD_REQUEST') &quot;Validation Error&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:NOT_FOUND') &quot;Resource not Found&quot;&#10;else if((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:METHOD_NOT_ALLOWED') &quot;Method not Allowed&quot;&#10;else if((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:NOT_ACCEPTABLE') &quot;Not Acceptable&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'APIKIT:UNSUPPORTED_MEDIA_TYPE') &quot;Unspported Media Type&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:BAD_REQUEST') &quot;Validation Error&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:NOT_FOUND') &quot;Resource Not Found&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:METHOD_NOT_ALLOWED') &quot;Method not Allowed&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:NOT_ACCEPTABLE') &quot;Not Acceptable&quot;&#10;else if ((error.errorType.namespace ++ &quot;:&quot; ++ error.errorType.identifier) == 'HTTP:UNSUPPORTED_MEDIA_TYPE') &quot;Unspported Media Type&quot;&#10;else if ((error.errorType.namespace) == 'VALIDATION') &quot;Validation Error&quot;&#10;else &quot;Internal Server Error&quot;]" doc:name="set errorMessage" doc:id="89a648f7-8e5b-4bf2-b7a5-1f1d33c59f31" variableName="errorMessage"/>
+			<ee:transform doc:name="transform Error" doc:id="12f56e25-fc4e-49a0-a574-b082c73c4357" >
+				<ee:message >
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="errorPayload" ><![CDATA[%dw 2.0
+output application/java
+---
+
+	if (error.errorMessage.attributes.statusCode == 400 or error.errorType.identifier == 'BAD_REQUEST') 
+	errorCode : "422"
+	else if (error.errorMessage.attributes.statusCode == 404 or error.errorType.identifier == 'NOT_FOUND')
+	errorCode: "404"
+	else if (error.errorMessage.attributes.statusCode == 405 or error.errorType.identifier == 'METHOD_NOT_ALLOWED')
+	errorCode: "405"
+	else if (error.errorMessage.attributes.statusCode == 406 or error.errorType.identifier == 'NOT_ACCEPTABLE')
+	{errorCode: 406, category: "FUNCTIONAL"}
+	else if (error.errorMessage.attributes.statusCode == 415 or error.errorType.identifier == 'UNSUPPORTED_MEDIA_TYPE')
+	errorCode: "415"
+	else if (error.errorMessage.attributes.statusCode == 501 or error.errorType.identifier == 'NOT_IMPLEMENTED')
+	{errorCode: 501, category: "SYSTEM"}
+	else if (error.errorMessage.attributes.statusCode == 429 or error.errorType.identifier == 'TOO_MANY_REQUESTS')
+	{errorCode: 429, category: "OTHERS"}
+	else if (error.errorMessage.attributes.statusCode == 423 or error.errorType.identifier == 'LOCKED')
+	{errorCode: 423, category: "OTHERS"}
+	else if (error.errorMessage.attributes.statusCode == 206 or error.errorType.identifier == 'PARTIAL_CONTENT')
+	{errorCode: 206, category: "OTHERS", severity: "Info"}
+	else if (error.errorType.identifier == 'EXPRESSION')
+	{errorCode: 500, category: "INTERNAL", severity: "Info"}
+	
+	else if(error.errorMessage.attributes.statusCode != null)
+	errorCode: error.errorMessage.attributes.statusCode
+	else {errorCode: 500, category: "INTERNAL"}
+	
+]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="Call handle-error" doc:id="bebdf91a-714d-4af6-8583-2ac69930004b" name="handle-error"/>
+		</on-error-propagate>
+	</error-handler>
+	
+</mule>
